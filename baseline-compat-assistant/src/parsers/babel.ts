@@ -1,6 +1,7 @@
 import { parse } from "@babel/parser";
 import traverse, { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
+import { checkBaselineFeature } from "../baseline-check/baseline-checker";
 
 const code = `
 <section style={{ scrollSnapAlign: "center" }}>
@@ -15,12 +16,12 @@ const baselineCSS: Record<string, string[]> = {
   "scroll-snap-align": ["ie 11", "edge < 16"]
 };
 
-function checkCSSProperty(prop: string) {
+async function checkCSSProperty(prop: string) {
   const propLower = prop.toLowerCase();
-  if (baselineCSS[propLower]) {
-    console.warn(`⚠️ ${prop} might be unsupported in: ${baselineCSS[propLower].join(", ")}`);
-  }
+  const ans = await checkBaselineFeature(propLower);
+  console.log(ans);
 }
+
 function jsToCssProp(prop: string) {
   return prop.replace(/[A-Z]/g, (m) => "-" + m.toLowerCase());
 }

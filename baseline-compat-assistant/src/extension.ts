@@ -16,7 +16,7 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.languages.registerCodeActionsProvider('plaintext', new Emojizer(), {
 			providedCodeActionKinds: Emojizer.providedCodeActionKinds
 		})
-	) 
+	)
 
 }
 
@@ -31,12 +31,9 @@ export class Emojizer implements vscode.CodeActionProvider{
 		if(!this.isStartofSmiley(document,range)){
 			return [];
 		}
-
 		const fix = this.createFix(document,range);
-
 		return [fix];
 	}
-
 	private isStartofSmiley(document:vscode.TextDocument, range: vscode.Range): boolean {
 		const start = range.start;
 		const line = document.lineAt(start.line);
