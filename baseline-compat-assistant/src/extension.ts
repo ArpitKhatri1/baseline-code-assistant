@@ -1,48 +1,85 @@
+import * as vscode from "vscode";
+import { parse } from "@babel/parser";
+import traverse from "@babel/traverse"; 
+import * as t from "@babel/types";
 
-import * as vscode from 'vscode';
+function jsToCssProp(prop: string) {
+  return prop.replace(/[A-Z]/g, (m) => "-" + m.toLowerCase());
+}
 
+async function checkBaselineFeature(featureKey: string) {
+  const { features } = await import("web-features");
+  return features[featureKey] || null;
+}
+
+
+const parseReactFiles = async (document: vscode.TextDocument) => {
+  if (!document.fileName.endsWith(".jsx") && !document.fileName.endsWith(".tsx")) return;
+
+  const code = document.getText();
+  const ast = parse(code, { sourceType: "module", plugins: ["jsx", "typescript", "classProperties"] });
+
+  const classes: string[] = [];
+  const styledComponents: string[] = [];
+  const styleProps: string[] = [];
+
+  traverse(ast, {
+    JSXAttribute(path) {
+      const name = path.node.name.name;
+      const valueNode = path.node.value;
+
+      if (name === "className" && valueNode?.type === "StringLiteral") {
+        classes.push(valueNode.value);
+      }
+
+      if (name === "style" && valueNode?.type === "JSXExpressionContainer") {
+        const expr = valueNode.expression;
+        if (expr.type === "ObjectExpression") {
+          expr.properties.forEach((prop: any) => {
+            let keyName = "";
+            if (t.isIdentifier(prop.key)) keyName = prop.key.name;
+            else if (t.isStringLiteral(prop.key)) keyName = prop.key.value;
+            if (keyName) styleProps.push(keyName);
+          });
+        }
+      }
+    },
+    TaggedTemplateExpression(path) {
+      const tag = path.node.tag;
+      if (
+        (tag.type === "MemberExpression" && tag.object.type === "Identifier" && tag.object.name === "styled") ||
+        (tag.type === "CallExpression" && tag.callee.type === "Identifier" && tag.callee.name === "styled")
+      ) {
+        styledComponents.push(path.get("tag").toString());
+      }
+    },
+  });
+
+  for (const key of styleProps) {
+
+    const cssProp = jsToCssProp(key).toLowerCase();
+    console.log(cssProp)
+    try {
+      const result = await checkBaselineFeature(cssProp);
+      if (!result) console.log(`No baseline data for: ${cssProp}`);
+      else console.log(`${cssProp}:`, result);
+    } catch (err) {
+      console.error(`Error checking baseline for ${cssProp}:`, err);
+    }
+  }
+
+  console.log("File:", document.fileName);
+  console.log("CSS Classes:", classes);
+  console.log("Styled Components:", styledComponents);
+};
 
 export function activate(context: vscode.ExtensionContext) {
-
-	const disposable = vscode.commands.registerCommand('baseline-compat-assistant.helloWorld', () => {
-		
-		vscode.window.showInformationMessage('Hello World from baseline-comspat-assistant!');
-	});
-
-	context.subscriptions.push(disposable);
-
-
-	context.subscriptions.push(
-		vscode.languages.registerCodeActionsProvider('plaintext', new Emojizer(), {
-			providedCodeActionKinds: Emojizer.providedCodeActionKinds
-		})
-	)
-
-}
-
-export class Emojizer implements vscode.CodeActionProvider{
-	
-	  public static readonly providedCodeActionKinds = [
-        vscode.CodeActionKind.QuickFix
-    ];
-
-	public provideCodeActions(document: vscode.TextDocument, range: vscode.Range | vscode.Selection, context: vscode.CodeActionContext, token: vscode.CancellationToken):  vscode.CodeAction[] {
-
-		if(!this.isStartofSmiley(document,range)){
-			return [];
-		}
-		const fix = this.createFix(document,range);
-		return [fix];
-	}
-	private isStartofSmiley(document:vscode.TextDocument, range: vscode.Range): boolean {
-		const start = range.start;
-		const line = document.lineAt(start.line);
-		return line.text[start.character] === ':' && line.text[start.character + 1] === ')';
-	}
-	private createFix(document:vscode.TextDocument, range:vscode.Range): vscode.CodeAction {
-		const fix = new vscode.CodeAction('Convert to emoji',vscode.CodeActionKind.QuickFix);
-		fix.edit = new vscode.WorkspaceEdit();
-		fix.edit.replace(document.uri,new vscode.Range(range.start,range.start.translate(0,2)),':9');
-		return fix;
-}
+  vscode.workspace.onDidSaveTextDocument((document) => parseReactFiles(document));
+  vscode.window.onDidChangeActiveTextEditor((editor) => {
+    if (editor) parseReactFiles(editor.document);
+  });
+  if (vscode.window.activeTextEditor) {
+    parseReactFiles(vscode.window.activeTextEditor.document);
+    
+  }
 }

@@ -14,6 +14,9 @@ importers:
       babel-traverse:
         specifier: ^6.26.0
         version: 6.26.0
+      web-features:
+        specifier: ^3.1.0
+        version: 3.1.0
     devDependencies:
       '@types/babel__traverse':
         specifier: ^7.28.0
@@ -1696,6 +1699,9 @@ packages:
 
   validate-npm-package-license@3.0.4:
     resolution: {integrity: sha512-DpKm2Ui/xN7/HQKCtpZxoRWBhZ9Z0kqtygG8XCgNQ8ZlDnxuQmWhj566j8fN4Cu3/JmbhsDo7fcAJq4s9h27Ew==}
+
+  web-features@3.1.0:
+    resolution: {integrity: sha512-Qa91dX/87XTWp77zr7pE1LXIaoABtBWH3mxMdPbRzzSe04Q9zx/WKWng/lFPv4IdsztUFPiAqB1JnE+27cDbfw==}
 
   which-boxed-primitive@1.1.1:
     resolution: {integrity: sha512-TbX3mj8n0odCBFVlY8AxkqcHASw3L60jIuF8jFP78az3C2YhmGvqbHBpAjTRH2/xqYunrJ9g1jSyjCjpoWzIAA==}
@@ -3577,6 +3583,8 @@ snapshots:
     dependencies:
       spdx-correct: 3.2.0
       spdx-expression-parse: 3.0.1
+
+  web-features@3.1.0: {}
 
   which-boxed-primitive@1.1.1:
     dependencies:

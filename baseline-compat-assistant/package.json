@@ -1,7 +1,8 @@
 {
   "name": "baseline-compat-assistant",
-  "displayName": "baseline-compat-assistant",
-  "description": "Extension for google-baseline-hackathon",
+  "publisher": "arpit",
+  "displayName": "Baseline Compat Assistant",
+  "description": "Extension for Google Baseline Hackathon",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.104.0"
@@ -13,6 +14,11 @@
     "onLanguage:plaintext"
   ],
   "main": "./dist/extension.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/arpit/baseline-compat-assistant.git"
+  },
+  "homepage": "https://github.com/arpit/baseline-compat-assistant",
   "contributes": {
     "commands": [
       {
@@ -52,6 +58,7 @@
   },
   "dependencies": {
     "@babel/traverse": "^7.28.4",
-    "babel-traverse": "^6.26.0"
+    "babel-traverse": "^6.26.0",
+    "web-features": "^3.1.0"
   }
 }
