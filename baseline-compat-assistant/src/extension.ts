@@ -1,7 +1,8 @@
 import * as vscode from "vscode";
 import { parse } from "@babel/parser";
-import traverse from "@babel/traverse"; 
+import traverse from "@babel/traverse";
 import * as t from "@babel/types";
+import { convertFromCssToJss, getConvertedClasses } from "./lib/tailwind-to-css";
 
 function jsToCssProp(prop: string) {
   return prop.replace(/[A-Z]/g, (m) => "-" + m.toLowerCase());
@@ -12,12 +13,18 @@ async function checkBaselineFeature(featureKey: string) {
   return features[featureKey] || null;
 }
 
-
 const parseReactFiles = async (document: vscode.TextDocument) => {
-  if (!document.fileName.endsWith(".jsx") && !document.fileName.endsWith(".tsx")) return;
+  if (
+    !document.fileName.endsWith(".jsx") &&
+    !document.fileName.endsWith(".tsx")
+  )
+    return;
 
   const code = document.getText();
-  const ast = parse(code, { sourceType: "module", plugins: ["jsx", "typescript", "classProperties"] });
+  const ast = parse(code, {
+    sourceType: "module",
+    plugins: ["jsx", "typescript", "classProperties"],
+  });
 
   const classes: string[] = [];
   const styledComponents: string[] = [];
@@ -47,8 +54,12 @@ const parseReactFiles = async (document: vscode.TextDocument) => {
     TaggedTemplateExpression(path) {
       const tag = path.node.tag;
       if (
-        (tag.type === "MemberExpression" && tag.object.type === "Identifier" && tag.object.name === "styled") ||
-        (tag.type === "CallExpression" && tag.callee.type === "Identifier" && tag.callee.name === "styled")
+        (tag.type === "MemberExpression" &&
+          tag.object.type === "Identifier" &&
+          tag.object.name === "styled") ||
+        (tag.type === "CallExpression" &&
+          tag.callee.type === "Identifier" &&
+          tag.callee.name === "styled")
       ) {
         styledComponents.push(path.get("tag").toString());
       }
@@ -56,9 +67,8 @@ const parseReactFiles = async (document: vscode.TextDocument) => {
   });
 
   for (const key of styleProps) {
-
     const cssProp = jsToCssProp(key).toLowerCase();
-    console.log(cssProp)
+    console.log(cssProp);
     try {
       const result = await checkBaselineFeature(cssProp);
       if (!result) console.log(`No baseline data for: ${cssProp}`);
@@ -69,17 +79,20 @@ const parseReactFiles = async (document: vscode.TextDocument) => {
   }
 
   console.log("File:", document.fileName);
-  console.log("CSS Classes:", classes);
+  const classcss = classes[0];
+  console.log(classcss);
+  console.log("CSS Classes:",convertFromCssToJss(getConvertedClasses(classcss)));
   console.log("Styled Components:", styledComponents);
 };
 
 export function activate(context: vscode.ExtensionContext) {
-  vscode.workspace.onDidSaveTextDocument((document) => parseReactFiles(document));
+  vscode.workspace.onDidSaveTextDocument((document) =>
+    parseReactFiles(document)
+  );
   vscode.window.onDidChangeActiveTextEditor((editor) => {
     if (editor) parseReactFiles(editor.document);
   });
   if (vscode.window.activeTextEditor) {
     parseReactFiles(vscode.window.activeTextEditor.document);
-    
   }
 }
