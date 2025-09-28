@@ -4,6 +4,8 @@ import traverse, { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
 import { attributes, classRanges, eventHandlers, styledComponents, tagNames } from '../extension';
 import { checkBaseLineProperties } from '../lib/baseline';
+
+
 export function babelParser(document: vscode.TextDocument) {
   const code = document.getText();
   const ast = parse(code, {
