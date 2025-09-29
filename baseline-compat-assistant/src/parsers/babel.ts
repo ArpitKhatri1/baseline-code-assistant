@@ -6,7 +6,7 @@ import { attributes, classRanges, eventHandlers, styledComponents, tagNames } fr
 import { checkBaseLineProperties } from '../lib/baseline';
 
 
-export function babelParser(document: vscode.TextDocument) {
+export async function babelParser(document: vscode.TextDocument) {
   const code = document.getText();
   const ast = parse(code, {
     sourceType: "module",
@@ -27,7 +27,7 @@ export function babelParser(document: vscode.TextDocument) {
     },
   });
 
-  checkBaseLineProperties();
+  await checkBaseLineProperties();
 }
 
 

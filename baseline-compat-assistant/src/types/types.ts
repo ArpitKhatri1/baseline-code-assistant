@@ -34,7 +34,7 @@ interface BaselineSupport {
 }
 
 export interface BaselineStatus {
-  baseline: "high" | "low" | string;
+  baseline: "high" | "low" | string | boolean;
   baseline_low_date: string;
   baseline_high_date: string;
   support: BaselineSupport;
