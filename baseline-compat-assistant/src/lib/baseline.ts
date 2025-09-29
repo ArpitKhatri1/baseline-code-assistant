@@ -2,6 +2,7 @@ import postcss from "postcss";
 import tailwindcss from "tailwindcss";
 import { safeParser } from "postcss-safe-parser";
 import fs from "fs";
+import {parse} from 'css-what';
 
 import { classRanges, eventHandlers, tagNames, attributes } from "../extension";
 import { checkBaselineUserRequirements } from "../diagonistic";
@@ -19,7 +20,7 @@ export async function checkBaseLineProperties() {
 async function checkBaselineFeature(featureKey: string) {
   try {
     const { getStatus } = await import("compute-baseline");
-    return getStatus("css",featureKey) || null;
+    return getStatus("css", featureKey) || null;
   } catch {
     return null;
   }
@@ -92,11 +93,10 @@ async function checkBaselineForClassNames() {
         tasks.push(
           (async () => {
             const propertyKey = `css.properties.${decl.prop}`;
-            console.log(propertyKey);
+    
 
             const results = await checkBaselineFeature(propertyKey);
-            console.log("hi");
-            console.log("the results",results)
+
             if (results) {
               checkBaselineUserRequirements(
                 results,
@@ -110,9 +110,72 @@ async function checkBaselineForClassNames() {
         );
       });
 
+      // for selectors
+       root.walkRules((rule) => {
+        tasks.push(
+          (async () => {
+            const featureKeys = getSelectorFeatureKeys(rule.selector);
+            
+            for (const key of featureKeys) {
+              console.log(key);
+              const results = await checkBaselineFeature(key);
+              if (results) {
+                checkBaselineUserRequirements(
+                  results,
+                  classNameObj.document,
+                  classNameObj.start,
+                  classNameObj.end,
+                  "fw"
+                );
+              }
+            }
+          })()
+        );
+      });
+
       await Promise.all(tasks);
     } catch (err) {
       console.error(`Error processing class "${classNameObj.className}":`, err);
     }
   }
+}
+
+
+function getSelectorFeatureKeys(selector: string): string[] {
+  const ast = parse(selector);
+  const keys: string[] = [];
+
+  ast.forEach((selectors) => {
+    selectors.forEach((token) => {
+      if (token.type === "pseudo") {
+        // pseudo-class
+        switch (token.name.toLowerCase()) {
+          case "hover":
+            keys.push("css.selectors.hover");
+            break;
+          case "focus":
+            keys.push("css.selectors.focus");
+            break;
+          case "has":
+            keys.push("css.selectors.has");
+            break;
+          case "nth-child":
+            keys.push("css.selectors.nth-child");
+            break;
+          case "nth-of-type":
+            keys.push("css.selectors.nth-of-type");
+            break;
+          default:
+            keys.push(`css.selectors.${token.name.toLowerCase()}`);
+        }
+      }
+
+      if (token.type === "pseudo-element") {
+        // pseudo-element
+        keys.push(`css.pseudo-elements.${token.name.toLowerCase()}`);
+      }
+    });
+  });
+
+  return keys;
 }
