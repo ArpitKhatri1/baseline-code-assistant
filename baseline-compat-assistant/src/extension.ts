@@ -1,3 +1,4 @@
+import fs from "fs";
 import * as vscode from "vscode";
 
 import {
@@ -5,8 +6,10 @@ import {
   ClassRangeType,
   EventHandlerPropType,
   TagNameRangeType,
+  rawCSSType
 } from "./types/types";
 import { babelParser } from "./parsers/babel";
+import path from "path";
 
 // Globals
 export let diagnosticsCollection: vscode.DiagnosticCollection;
@@ -15,7 +18,7 @@ export const classRanges: ClassRangeType[] = [];
 export const tagNames: TagNameRangeType[] = [];
 export const attributes: AttributePropType[] = [];
 export const eventHandlers: EventHandlerPropType[] = [];
-export const styledComponents: string[] = [];
+export const styledComponents: rawCSSType[] = [];
 
 // main parser function
 export async function parseFile(document: vscode.TextDocument) {
@@ -52,43 +55,93 @@ export function activate(context: vscode.ExtensionContext) {
 
   //run parser on file change
   vscode.window.onDidChangeActiveTextEditor((editor) => {
-    if (editor) parseFile(editor.document);
+    if (editor) {
+      parseFile(editor.document);
+    }
   });
 
   // run parser on initial load
   if (vscode.window.activeTextEditor) {
     parseFile(vscode.window.activeTextEditor.document);
-    
   }
 
-// inside activate()
-const disposable = vscode.commands.registerCommand(
-  "baseline-compat-assistant.showInfoPanel", // ✅ match package.json
-  () => {
-    const panel = vscode.window.createWebviewPanel(
-      "infoPanel",
-      "Extra Information",
-      vscode.ViewColumn.Beside,
-      { enableScripts: true }
-    );
-    panel.webview.html = getHtmlContent();
-  }
-);
-context.subscriptions.push(disposable);
 
-}
 
-function getHtmlContent(): string {
-  return /*html*/ `
-    <!DOCTYPE html>
-    <html>
-    <body style="font-family:sans-serif;padding:1rem;">
-      <h2>Extra Information</h2>
-      <p>This is your custom side popup with any HTML, CSS, or JS you like.</p>
-      <script>
-        // you can post messages back to the extension if needed
-        const vscode = acquireVsCodeApi();
-      </script>
+  const disposable = vscode.commands.registerCommand(
+    "baseline-compat-assistant.showInfoPanel",
+    () => {
+      const panel = vscode.window.createWebviewPanel(
+        "infoPanel",
+        "Extra Information",
+        vscode.ViewColumn.Beside,
+        {
+          enableScripts: true,
+          localResourceRoots: [
+            vscode.Uri.file(
+              path.join(context.extensionPath, "react-sidepanel", "dist")
+            ),
+          ],
+          
+        }
+      );
+
+      const devServerUrl = "http://localhost:5173";
+     panel.webview.html = `
+  <!DOCTYPE html>
+  <html lang="en">
+    <head>
+      <meta charset="UTF-8" />
+      <style>
+        html, body {
+          height: 100%;
+          width: 100%;
+          margin: 0;
+          padding: 0;
+          overflow: hidden; /* prevent extra scroll */
+        }
+        iframe {
+          width: 100%;
+          height: 100%;
+          border: none;
+        }
+      </style>
+    </head>
+    <body>
+      <iframe src="${devServerUrl}"></iframe>
     </body>
-    </html>`;
+  </html>
+`;
+      // // Read index.html from React build
+      // const indexPath = path.join(
+      //   context.extensionPath,
+      //   "react-sidepanel",
+      //   "dist",
+      //   "index.html"
+      // );
+      // console.log("hi");
+      // console.log(indexPath);
+      // let html = fs.readFileSync(indexPath, "utf8");
+
+      // // Replace JS/CSS asset paths so VSCode can load them
+      // html = html.replace(
+      //   /"\/assets\/([^"]+)"/g,
+      //   (match, p1) =>
+      //     `"${panel.webview.asWebviewUri(
+      //       vscode.Uri.file(
+      //         path.join(
+      //           context.extensionPath,
+      //           "react-sidepanel",
+      //           "dist",
+      //           "assets",
+      //           p1
+      //         )
+      //       )
+      //     )}"`
+      // );
+
+      // panel.webview.html = html;
+    }
+  );
+
+  context.subscriptions.push(disposable);
 }

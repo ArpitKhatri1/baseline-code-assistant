@@ -1,4 +1,4 @@
-import * as vscode from 'vscode'
+import * as vscode from 'vscode';
 import { parse } from "@babel/parser";
 import traverse, { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
@@ -7,6 +7,7 @@ import { checkBaseLineProperties } from '../lib/baseline';
 
 
 export async function babelParser(document: vscode.TextDocument) {
+  const outputChannel = vscode.window.createOutputChannel("ast output");
   const code = document.getText();
   const ast = parse(code, {
     sourceType: "module",
@@ -14,6 +15,8 @@ export async function babelParser(document: vscode.TextDocument) {
     ranges: true,
     errorRecovery: true,
   });
+  outputChannel.show(true);
+  outputChannel.appendLine(JSON.stringify(ast,null,4));
 
   traverse(ast, {
     JSXOpeningElement(path) {
@@ -23,7 +26,7 @@ export async function babelParser(document: vscode.TextDocument) {
       handleJSXAttribute(path, document);
     },
     TaggedTemplateExpression(path) {
-      handleStyledComponent(path);
+     handleStyledComponent(path,document);
     },
   });
 
@@ -35,7 +38,7 @@ function handleJSXElement(
   path: NodePath<t.JSXOpeningElement>,
   document: vscode.TextDocument
 ) {
-  if (!t.isJSXIdentifier(path.node.name)) return;
+  if (!t.isJSXIdentifier(path.node.name)) {return;}
   const node = path.node.name;
   if (node.range) {
     tagNames.push({ tag: node.name, start: node.range[0], end: node.range[1] ,document:document});
@@ -52,7 +55,7 @@ function handleClassNames(
   }
   if (t.isJSXExpressionContainer(valueNode)) {
     const expr = valueNode.expression;
-    if (t.isJSXEmptyExpression(expr)) return;
+    if (t.isJSXEmptyExpression(expr)) {return;}
     if (t.isExpression(expr)) {
       extractFromExpression(expr, document);
     }
@@ -88,7 +91,7 @@ function collectStaticClasses(
   const [startBase] = range;
   const offset = startBase + 1;
   raw.split(/\s+/).forEach((cls) => {
-    if (!cls.trim()) return;
+    if (!cls.trim()) {return;}
     const idx = raw.indexOf(cls);
     if (idx !== -1) {
       classRanges.push({
@@ -109,7 +112,7 @@ function handleJSXAttribute(
   const name = t.isJSXIdentifier(path.node.name)
     ? path.node.name.name
     : undefined;
-  if (!name) return;
+  if (!name) {return;}
 
   if (path.node.name.range) {
     attributes.push({
@@ -133,17 +136,42 @@ function handleJSXAttribute(
   // className
   const valueNode = path.node.value;
   if (name === "className" && valueNode)
-    handleClassNames(valueNode as any, document);
+    {handleClassNames(valueNode as any, document);}
 }
 
 
-function handleStyledComponent(path: NodePath<t.TaggedTemplateExpression>) {
+function isStyledExpression(node: t.Node): boolean {
+  if (t.isIdentifier(node, { name: "styled" })) return true;
+
+  if (t.isMemberExpression(node)) {
+    // styled.div or styled.div.attrs
+    return isStyledExpression(node.object);
+  }
+
+  if (t.isCallExpression(node)) {
+    // styled("div") or styled(Component)
+    return isStyledExpression(node.callee);
+  }
+
+  return false;
+}
+
+// Main handler for a TaggedTemplateExpression
+function handleStyledComponent(path: NodePath<t.TaggedTemplateExpression>, document: any) {
   const tag = path.node.tag;
-  if (
-    (t.isMemberExpression(tag) &&
-      t.isIdentifier(tag.object, { name: "styled" })) ||
-    (t.isCallExpression(tag) && t.isIdentifier(tag.callee, { name: "styled" }))
-  ) {
-    styledComponents.push(path.get("tag").toString());
+
+  if (isStyledExpression(tag)) {
+    const quasi = path.node.quasi;
+    let cssText = quasi.quasis.map((q) => q.value.raw).join("\n");
+     cssText = cssText.replace(/\/\*[\s\S]*?\*\//g, ''); // removes the comment
+     cssText = cssText.replace(/\n/g,' ');
+
+    styledComponents.push({
+      css: cssText,
+      start: path.node.start ?? 0,
+      end: path.node.end ?? 0,
+      document,
+    });
   }
 }
+

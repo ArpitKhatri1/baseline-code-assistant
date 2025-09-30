@@ -31,3 +31,10 @@ export interface BaselineStatus {
   baseline_high_date?: string | undefined;
   support: Record<string,string>;
 }
+
+export interface rawCSSType {
+  css:string,
+  start:number,
+  end:number,
+  document:vscode.TextDocument
+}

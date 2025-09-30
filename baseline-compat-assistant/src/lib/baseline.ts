@@ -2,25 +2,29 @@ import postcss from "postcss";
 import tailwindcss from "tailwindcss";
 import { safeParser } from "postcss-safe-parser";
 import fs from "fs";
-import {parse} from 'css-what';
 
-import { classRanges, eventHandlers, tagNames, attributes } from "../extension";
+import { classRanges, eventHandlers, tagNames, attributes,styledComponents } from "../extension";
 import { checkBaselineUserRequirements } from "../diagonistic";
 import path from "path";
+import { parse,walk,generate } from 'css-tree';
+import {parse as parseCSSWalk} from 'css-what' ;
 
 // --- Main entry ---
 export async function checkBaseLineProperties() {
-  // await checkBaselineForTags();
+  await checkBaselineForTags();
+  // skip the attributes
   // await checkBaselineForAttributes();
   // await checkBaselineForEvents();
   await checkBaselineForClassNames();
+  await checkBaselineForStyleCompoenents();
+
 }
 
 // --- Helpers ---
-async function checkBaselineFeature(featureKey: string) {
+async function checkBaselineFeature(file: string, featureKey: string) {
   try {
     const { getStatus } = await import("compute-baseline");
-    return getStatus("css", featureKey) || null;
+    return getStatus(file, featureKey) || null;
   } catch {
     return null;
   }
@@ -30,7 +34,9 @@ async function checkBaselineFeature(featureKey: string) {
 async function checkBaselineForTags() {
   for (const { tag } of tagNames) {
     const key = `html.elements.${tag.toLowerCase()}`;
-    const result = await checkBaselineFeature(key);
+    const result = await checkBaselineFeature("html", key);
+
+    // console.log(key, result);
     // call diagnostic if needed
   }
 }
@@ -39,15 +45,20 @@ async function checkBaselineForTags() {
 async function checkBaselineForAttributes() {
   for (const { prop } of attributes) {
     const key = `html.attributes.${prop.toLowerCase()}`;
-    const result = await checkBaselineFeature(key);
+    const result = await checkBaselineFeature("html", key);
+    console.log(key, result);
   }
+}
+
+async function checkBaselineForStyleCompoenents(){
+
 }
 
 // Check event handlers
 async function checkBaselineForEvents() {
   for (const { event } of eventHandlers) {
     const key = `html.events.${event}`;
-    const result = await checkBaselineFeature(key);
+    const result = await checkBaselineFeature("html", key);
   }
 }
 export async function compileClassesToCSS(classes: string[]): Promise<string> {
@@ -63,9 +74,7 @@ export async function compileClassesToCSS(classes: string[]): Promise<string> {
       // Provide content to scan for classes
       content: [{ raw: htmlContent, extension: "html" }],
 
-      // --- NEW FIX ---
-      // Explicitly disable the preflight (base styles) plugin.
-      // This will stop Tailwind from trying to find the preflight.css file.
+     
       corePlugins: {
         preflight: false,
       },
@@ -75,27 +84,22 @@ export async function compileClassesToCSS(classes: string[]): Promise<string> {
 
   return result.css;
 }
-// Check Tailwind class names
 async function checkBaselineForClassNames() {
-  console.log("classranges", classRanges);
-
   for (const classNameObj of classRanges) {
     try {
       const cssText = await compileClassesToCSS([classNameObj.className]);
-
-      // Parse CSS safely
+      console.log(cssText);
       const result = await postcss().process(cssText, { parser: safeParser });
       const root = result.root;
 
       const tasks: Promise<void>[] = [];
 
+      // Walk properties (declarations)
       root.walkDecls((decl) => {
         tasks.push(
           (async () => {
             const propertyKey = `css.properties.${decl.prop}`;
-    
-
-            const results = await checkBaselineFeature(propertyKey);
+            const results = await checkBaselineFeature("css", propertyKey);
 
             if (results) {
               checkBaselineUserRequirements(
@@ -103,29 +107,28 @@ async function checkBaselineForClassNames() {
                 classNameObj.document,
                 classNameObj.start,
                 classNameObj.end,
-                "fw"
+                propertyKey
               );
             }
-          })() as Promise<void>
+          })()
         );
       });
 
-      // for selectors
-       root.walkRules((rule) => {
+      // Walk selectors (rules)
+      root.walkRules((rule) => {
         tasks.push(
           (async () => {
             const featureKeys = getSelectorFeatureKeys(rule.selector);
-            
+
             for (const key of featureKeys) {
-              console.log(key);
-              const results = await checkBaselineFeature(key);
+              const results = await checkBaselineFeature("css", key);
               if (results) {
                 checkBaselineUserRequirements(
                   results,
                   classNameObj.document,
                   classNameObj.start,
                   classNameObj.end,
-                  "fw"
+                  key
                 );
               }
             }
@@ -140,9 +143,8 @@ async function checkBaselineForClassNames() {
   }
 }
 
-
 function getSelectorFeatureKeys(selector: string): string[] {
-  const ast = parse(selector);
+  const ast = parseCSSWalk(selector);
   const keys: string[] = [];
 
   ast.forEach((selectors) => {
