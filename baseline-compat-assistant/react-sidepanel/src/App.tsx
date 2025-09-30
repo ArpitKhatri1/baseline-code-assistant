@@ -5,11 +5,12 @@ import axios from 'axios'
 import { InfoComponent } from "./components/ContentInfo"
 function App() {
   const [apiData, setApiData] = useState<WebBaselineApiResponse>()
-  const [query, setQuery] = useState('id:grid')
+  const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(false)
 
   const fetchApiData = async (query: string) => {
     try {
+      if(query === "") return;
       setLoading(true)
       const encodedQuery = encodeURIComponent(query)
       const response = await axios.get(`${WEB_STATUS_URL}${encodedQuery}`)
@@ -27,12 +28,30 @@ function App() {
     fetchApiData(query)
   }, [])
 
+  useEffect(()=>{
+    const handleMessage = (event:MessageEvent) =>{
+      const message = event.data;
+      if(message.command === "updateQuery"){
+        console.log("received")
+        const newQuery = message.query;
+        setQuery(newQuery);
+        fetchApiData(newQuery);
+      }
+    }
+
+    window.addEventListener("message",handleMessage)
+
+    return ()=>{
+      window.removeEventListener('message',handleMessage);
+    }
+  })
+
   const handleSearch = () => {
     fetchApiData(query)
   }
 
   return (
-    <div className="min-h-screen p-6">
+    <div className="bg-neutral-800 min-h-screen p-6">
       <h1 className="text-white text-2xl font-bold mb-4">Web Status Checker</h1>
 
       {/* Search Bar */}
@@ -41,6 +60,7 @@ function App() {
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e)=> e.key === "Enter" ? handleSearch() :""}
           placeholder="Enter query (e.g., id:grid)"
           className="flex-1 p-2 rounded-md text-black"
         />

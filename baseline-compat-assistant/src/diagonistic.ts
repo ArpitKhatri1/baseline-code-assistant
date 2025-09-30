@@ -10,7 +10,6 @@ export async function checkBaselineUserRequirements(
   end: number,
   propertyName: string
 ) {
-  
   if (baselineResponse.baseline === "low") {
     addDiagnosticRange(
       document,
@@ -20,8 +19,9 @@ export async function checkBaselineUserRequirements(
     );
   }
   for (const browser of Object.keys(userBrowserConfig)) {
+    console.log(browser);
     const required = userBrowserConfig[browser];
-    const supported = baselineResponse.support.browser ?? "0";
+    const supported = baselineResponse.support[browser] ?? "0";
     if (supported < required) {
       addDiagnosticRange(
         document,
@@ -32,6 +32,7 @@ export async function checkBaselineUserRequirements(
     }
   }
 }
+
 export async function addDiagnosticRange(
   document: vscode.TextDocument,
   start: number,
@@ -47,6 +48,16 @@ export async function addDiagnosticRange(
     message,
     vscode.DiagnosticSeverity.Warning
   );
+
+  const args = "twitter";
+  diag.code = {
+    value: "Learn More",
+    target: vscode.Uri.parse(
+      `command:baseline-compat-assistant.learnMore?${encodeURIComponent(
+        JSON.stringify(args)
+      )}`
+    ),
+  };
   const existing = diagnosticsCollection.get(document.uri) || [];
   diagnosticsCollection.set(document.uri, [...existing, diag]);
 }

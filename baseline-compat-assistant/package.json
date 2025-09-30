@@ -28,6 +28,10 @@
       {
         "command": "baseline-compat-assistant.showInfoPanel",
         "title": "Show info Panel"
+      },
+       {
+        "command": "baseline-compat-assistant.learnMore",
+        "title": "Baseline: Learn More" 
       }
     ]
   },
