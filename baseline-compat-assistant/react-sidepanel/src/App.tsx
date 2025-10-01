@@ -1,20 +1,27 @@
-import { useEffect, useState } from "react"
-import type { WebBaselineApiResponse } from "./types/types"
-import { WEB_STATUS_URL } from "./constants"
+import { useEffect, useState } from 'react'
+import type { WebBaselineApiResponse, FeatureData } from './types/types'
+import { WEB_STATUS_URL } from './constants'
 import axios from 'axios'
-import { InfoComponent } from "./components/ContentInfo"
+import { FeatureCard } from './components/FeatureCard'
+import { FeatureDetail } from './components/FeatureDetail'
+import { Search } from 'lucide-react'
+
 function App() {
   const [apiData, setApiData] = useState<WebBaselineApiResponse>()
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(false)
+  const [selectedFeature, setSelectedFeature] = useState<FeatureData | null>(null)
+  const [selectedSearchMode, setSelectedSearchMode] = useState<"Name" | "Id">("Name");
 
   const fetchApiData = async (query: string) => {
     try {
-      if(query === "") return;
+      if (query === '') return
       setLoading(true)
+      if (selectedSearchMode == "Id") {
+        query = `id:` + query;
+      }
       const encodedQuery = encodeURIComponent(query)
       const response = await axios.get(`${WEB_STATUS_URL}${encodedQuery}`)
-      console.log(response.data)
       setApiData(response.data)
     } catch (error) {
       console.error('Error fetching API data:', error)
@@ -28,55 +35,111 @@ function App() {
     fetchApiData(query)
   }, [])
 
-  useEffect(()=>{
-    const handleMessage = (event:MessageEvent) =>{
-      const message = event.data;
-      if(message.command === "updateQuery"){
-        console.log("received")
-        const newQuery = message.query;
-        setQuery(newQuery);
-        fetchApiData(newQuery);
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      const message = event.data
+      if (message.command === 'updateQuery') {
+        const newQuery = message.query
+        setQuery(newQuery)
+        fetchApiData(newQuery)
+        setSelectedFeature(null)
       }
     }
 
-    window.addEventListener("message",handleMessage)
+    window.addEventListener('message', handleMessage)
 
-    return ()=>{
-      window.removeEventListener('message',handleMessage);
+    return () => {
+      window.removeEventListener('message', handleMessage)
     }
   })
 
   const handleSearch = () => {
     fetchApiData(query)
+    setSelectedFeature(null)
+  }
+
+  const handleFeatureClick = (feature: FeatureData) => {
+    setSelectedFeature(feature)
+  }
+
+  const handleBack = () => {
+    setSelectedFeature(null)
+  }
+
+  if (selectedFeature) {
+    return (
+      <div className="bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900 min-h-screen p-6">
+        <FeatureDetail feature={selectedFeature} onBack={handleBack} />
+      </div>
+    )
   }
 
   return (
-    <div className="bg-neutral-800 min-h-screen p-6">
-      <h1 className="text-white text-2xl font-bold mb-4">Web Status Checker</h1>
+    <div className="bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900 min-h-screen p-6">
+      <div className="max-w-6xl mx-auto">
+        <div className='flex justify-between'>
+          <h1 className="text-white text-3xl font-bold mb-8">Web Status Checker</h1>
+          <div className='grid grid-cols-2 text-center gap-2  text-white bg-neutral-700 rounded-xl px-2 h-fit py-2 text-lg items-center justify-center'>
+            <div className={`${selectedSearchMode === "Name" ? "bg-neutral-800/90":""} p-1 cursor-pointer rounded-lg px-2`} onClick={()=>setSelectedSearchMode("Name")}>
+              Name
+            </div>
+            <div className={`${selectedSearchMode === "Id" ? "bg-neutral-800/90":""} p-1 cursor-pointer rounded-lg px-2`} onClick={()=>setSelectedSearchMode("Id")}>
+              Id
+            </div>
+          </div>
+        </div>
 
-      {/* Search Bar */}
-      <div className="flex gap-2 mb-4">
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e)=> e.key === "Enter" ? handleSearch() :""}
-          placeholder="Enter query (e.g., id:grid)"
-          className="flex-1 p-2 rounded-md text-black"
-        />
-        <button
-          onClick={handleSearch}
-          className="bg-white/30 hover:bg-white/50 text-white px-4 rounded-md"
-        >
-          Search
-        </button>
+
+        <div className="relative mb-8">
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400">
+            <Search className="w-5 h-5" />
+          </div>
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => (e.key === 'Enter' ? handleSearch() : '')}
+            placeholder="Search features (e.g., id:grid, name:flexbox)"
+            className="w-full pl-12 pr-32 py-4 bg-neutral-800/50 backdrop-blur-sm border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-500 transition-colors"
+          />
+          <button
+            onClick={handleSearch}
+            className="absolute right-2 top-1/2 -translate-y-1/2 bg-sky-600 hover:bg-sky-500 text-white px-6 py-2 rounded-lg transition-colors font-medium"
+          >
+            Search
+          </button>
+        </div>
+
+        {loading && (
+          <div className="flex justify-center items-center py-12">
+            <div className="w-8 h-8 border-4 border-neutral-600 border-t-sky-500 rounded-full animate-spin"></div>
+          </div>
+        )}
+
+        {!loading && apiData && apiData.data.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {apiData.data.map((feature: FeatureData) => (
+              <FeatureCard
+                key={feature.feature_id}
+                feature={feature}
+                onClick={() => handleFeatureClick(feature)}
+              />
+            ))}
+          </div>
+        )}
+
+        {!loading && apiData && apiData.data.length === 0 && (
+          <div className="text-center py-12">
+            <p className="text-neutral-400 text-lg">No features found. Try a different search query.</p>
+          </div>
+        )}
+
+        {!loading && !apiData && query !== '' && (
+          <div className="text-center py-12">
+            <p className="text-neutral-400 text-lg">Enter a search query to find web features.</p>
+          </div>
+        )}
       </div>
-
-      {/* Loading Indicator */}
-      {loading && <p className="text-white/80">Loading...</p>}
-
-      {/* Information Component */}
-      <InfoComponent data={apiData} />
     </div>
   )
 }

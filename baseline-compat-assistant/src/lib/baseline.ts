@@ -3,11 +3,12 @@ import tailwindcss from "tailwindcss";
 import { safeParser } from "postcss-safe-parser";
 import fs from "fs";
 
-import { classRanges, eventHandlers, tagNames, attributes,styledComponents } from "../extension";
+import { classRanges, eventHandlers, tagNames, attributes,styledComponents,inlineComponents } from "../extension";
 import { checkBaselineUserRequirements } from "../diagonistic";
 import path from "path";
 import { parse,walk,generate } from 'css-tree';
 import {parse as parseCSSWalk} from 'css-what' ;
+import { parsedDeclarations,parsedSelectors } from "../parsers/babel";
 
 // --- Main entry ---
 export async function checkBaseLineProperties() {
@@ -17,7 +18,43 @@ export async function checkBaseLineProperties() {
   // await checkBaselineForEvents();
   await checkBaselineForClassNames();
   await checkBaselineForStyleCompoenents();
+  await checkBaselineForInlineComponents();
+  await checkBaselineParsedDeclarations();
+  await checkBaselineParsedSelectors();
 
+}
+
+async function checkBaselineForInlineComponents(){
+  for (const cssObj of inlineComponents){
+    const cssSearch = `css.properties.${cssObj.css}`;
+    const result = await checkBaselineFeature("css",cssSearch);
+    
+    if(result){
+      checkBaselineUserRequirements(result,cssObj.document,cssObj.start,cssObj.end,cssObj.css);
+    }
+  }
+}
+
+async function checkBaselineParsedDeclarations(){
+  for (const prop of parsedDeclarations){
+    const cssSearch = `css.properties.${prop.property}`;
+     const result = await checkBaselineFeature("css",cssSearch);
+    
+    if(result){ 
+      checkBaselineUserRequirements(result,prop.document,prop.start,prop.end,prop.property);
+    }
+  }
+}
+
+async function checkBaselineParsedSelectors(){
+  for( const prop of parsedSelectors){
+  const selectorKeys =  getSelectorFeatureKeys(prop.selector)[0];
+      const result = await checkBaselineFeature("css",selectorKeys);
+    
+    if(result){
+      checkBaselineUserRequirements(result,prop.document,prop.start,prop.end,prop.selector);
+    }
+  } 
 }
 
 // --- Helpers ---
@@ -88,7 +125,7 @@ async function checkBaselineForClassNames() {
   for (const classNameObj of classRanges) {
     try {
       const cssText = await compileClassesToCSS([classNameObj.className]);
-      console.log(cssText);
+    
       const result = await postcss().process(cssText, { parser: safeParser });
       const root = result.root;
 
@@ -144,7 +181,8 @@ async function checkBaselineForClassNames() {
 }
 
 function getSelectorFeatureKeys(selector: string): string[] {
-  const ast = parseCSSWalk(selector);
+   const cleanSelector = selector.trim().startsWith('&') ? selector.trim().substring(1) : selector;
+  const ast = parseCSSWalk(cleanSelector);
   const keys: string[] = [];
 
   ast.forEach((selectors) => {

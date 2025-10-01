@@ -11,6 +11,7 @@ export async function checkBaselineUserRequirements(
   propertyName: string
 ) {
   if (baselineResponse.baseline === "low") {
+    console.log(propertyName);
     addDiagnosticRange(
       document,
       start,
@@ -19,17 +20,19 @@ export async function checkBaselineUserRequirements(
     );
   }
   for (const browser of Object.keys(userBrowserConfig)) {
-    console.log(browser);
+    
     const required = userBrowserConfig[browser];
+    // console.log(baselineResponse.support);
     const supported = baselineResponse.support[browser] ?? "0";
-    if (supported < required) {
-      addDiagnosticRange(
-        document,
-        start,
-        end,
-        `${propertyName} requires ${browser} >= ${required}, but baseline shows ${supported}. Are you sure you want to use it?`
-      );
-    }
+    // if (parseInt(supported) < parseInt(required)) {
+    //   addDiagnosticRange(
+    //     document,
+    //     start,
+    //     end,
+    //     `${propertyName} requires ${browser} >= ${required}, but baseline shows ${supported}. Are you sure you want to use it?`
+    //   );
+    //   break;
+    // }
   }
 }
 

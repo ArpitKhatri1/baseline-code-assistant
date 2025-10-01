@@ -1,6 +1,6 @@
 (async () => {
-  const { getStatus } = await import("compute-baseline");
+  const { getStatus, computeBaseline } = await import("compute-baseline");
+  const status = computeBaseline({ compatKeys: ["css.pseudo-elements.marker"] });
 
-  const status = getStatus("html","html/classNamfewfae");
-  console.log(status);
+  console.log(status.toJSON());
 })();

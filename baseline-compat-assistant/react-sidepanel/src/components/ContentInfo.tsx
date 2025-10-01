@@ -9,7 +9,7 @@ export const InfoComponent: React.FC<InfoComponentProps> = ({ data }) => {
     if (!data || data.data.length === 0) return <p className="text-white/60">No data available</p>
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 mt-2">
             {data.data.map((feature: FeatureData) => (
                 <div key={feature.feature_id} className="bg-white/10 p-4 rounded-lg text-white shadow-md">
                     {/* Feature Name and Baseline */}
