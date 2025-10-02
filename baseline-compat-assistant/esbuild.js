@@ -42,6 +42,8 @@ async function main() {
     external: [
       "vscode",
       "web-features",
+      "eslint",
+      "csstree"
       
     ],
 

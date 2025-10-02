@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import { babelParser } from "./parsers/babel";
+import { ESLint } from "eslint";
 import {
   AttributePropType,
   ClassRangeType,
@@ -24,9 +25,14 @@ export const attributes: AttributePropType[] = [];
 export const eventHandlers: EventHandlerPropType[] = [];
 export const styledComponents: rawCSSType[] = [];
 export const inlineComponents: rawCSSType[] = [];
+import globals from "globals";
+// import css from "@eslint/css";
+import html from "@html-eslint/eslint-plugin";
+import compat from "eslint-plugin-compat";
 
 // A locking flag to ensure only one parse operation runs at a time.
 let isParsing = false;
+
 
 // A timer for debouncing parse triggers.
 let debounceTimer: NodeJS.Timeout | undefined;
@@ -36,7 +42,67 @@ let debounceTimer: NodeJS.Timeout | undefined;
  * This is called once when the extension is activated.
  * @param context The extension context provided by VS Code.
  */
+
+
+
+export async function runEslintOnHtml(fileUri: vscode.Uri) {
+  try {
+    // 1. Get the correct project path
+    const workspaceFolder = vscode.workspace.getWorkspaceFolder(fileUri);
+    if (!workspaceFolder) {
+      vscode.window.showErrorMessage("Could not find a workspace for the file.");
+      return;
+    }
+    const projectRootPath = workspaceFolder.uri.fsPath;
+
+    // 2. Create the ESLint instance with the correct CWD
+    const eslint = new ESLint({
+      cwd: projectRootPath,
+    });
+    
+    // 3. Lint the file
+    const results = await eslint.lintFiles([fileUri.fsPath]);
+
+    // 4. Load the formatter by its name
+    const formatter = await eslint.loadFormatter("stylish");
+    
+    // For debugging: Let's see what the formatter object is
+    console.log('Successfully loaded formatter:', formatter);
+
+    const resultText = await formatter.format(results);
+
+    // 5. Show the output
+    const outputChannel = vscode.window.createOutputChannel("ESLint");
+    outputChannel.clear();
+    outputChannel.appendLine(resultText || "No issues found ✅");
+    outputChannel.show();
+
+  } catch (error) {
+    console.error("An error occurred in runEslintOnHtml:", error);
+    // vscode.window.showErrorMessage(`ESLint Error: ${error.message}`);
+  }
+
+}
 export function activate(context: vscode.ExtensionContext) {
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      "baseline-compat-assistant.lintHtml",
+      async (uri: vscode.Uri) => {
+        if (!uri) {
+          const editor = vscode.window.activeTextEditor;
+          if (editor) {
+            uri = editor.document.uri;
+          }
+        }
+
+        if (uri ) {
+          await runEslintOnHtml(uri);
+        } else {
+          vscode.window.showWarningMessage("Please select an HTML file.");
+        }
+      }
+    )
+  );
   // Setup diagnostics collection.
   diagnosticsCollection = vscode.languages.createDiagnosticCollection(
     "Unsupported Features"
@@ -81,7 +147,9 @@ export function activate(context: vscode.ExtensionContext) {
         {
           enableScripts: true,
           localResourceRoots: [
-            vscode.Uri.file(path.join(context.extensionPath, "react-sidepanel", "dist")),
+            vscode.Uri.file(
+              path.join(context.extensionPath, "react-sidepanel", "dist")
+            ),
           ],
         }
       );
@@ -116,8 +184,8 @@ export function activate(context: vscode.ExtensionContext) {
       setTimeout(() => {
         if (infoPanel) {
           infoPanel.webview.postMessage({
-            command: 'updateQuery',
-            query: featureId
+            command: "updateQuery",
+            query: featureId,
           });
         }
       }, 200);
@@ -184,10 +252,11 @@ async function parseFile(document: vscode.TextDocument) {
     console.log("Event Handlers:", eventHandlers);
     console.log("Styled Components:", styledComponents);
     console.log("Inline Components:", inlineComponents);
-
   } catch (error) {
     console.error("An error occurred during parsing:", error);
-    vscode.window.showErrorMessage("Baseline Assistant: An error occurred while parsing the file.");
+    vscode.window.showErrorMessage(
+      "Baseline Assistant: An error occurred while parsing the file."
+    );
   } finally {
     // 2. Release the lock, allowing the next parse to run.
     isParsing = false;

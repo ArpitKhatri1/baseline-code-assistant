@@ -12,6 +12,9 @@
 		"noImplicitAny": false,
 		"rootDir": "src",
 		"strict": true,   /* enable all strict type-checking options */
+		"resolveJsonModule": true,  // For the package.json imports
+
+
 
 	}
 }
