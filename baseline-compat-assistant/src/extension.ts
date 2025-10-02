@@ -43,7 +43,28 @@ let debounceTimer: NodeJS.Timeout | undefined;
  * @param context The extension context provided by VS Code.
  */
 
+// export async function runEslintOnHtml(fileUri: vscode.Uri) {
+//   // Simply create a new ESLint instance.
+//   // It will automatically find and load `eslint.config.js`
+//   // from your project's root directory.
+//   const workspaceFolder = vscode.workspace.getWorkspaceFolder(fileUri);
+//   if (!workspaceFolder) {
+//     vscode.window.showErrorMessage("Could not find a workspace for the file.");
+//     return;
+//   }
+  
+//   const projectRootPath = workspaceFolder.uri.fsPath;
+//   console.log(`✅ Correctly searching for eslint.config.js in: ${projectRootPath}`);
 
+//   // 2. Pass the correct path to the ESLint constructor
+//   const eslint = new ESLint({
+//     cwd: projectRootPath,
+//   });
+
+//   const results = await eslint.lintFiles([fileUri.fsPath]);
+//   // The rest of the function remains the same...
+//  // New, correct code
+// }
 
 export async function runEslintOnHtml(fileUri: vscode.Uri) {
   try {
@@ -54,6 +75,7 @@ export async function runEslintOnHtml(fileUri: vscode.Uri) {
       return;
     }
     const projectRootPath = workspaceFolder.uri.fsPath;
+    console.log("eslint project root path",projectRootPath);
 
     // 2. Create the ESLint instance with the correct CWD
     const eslint = new ESLint({
@@ -81,8 +103,8 @@ export async function runEslintOnHtml(fileUri: vscode.Uri) {
     console.error("An error occurred in runEslintOnHtml:", error);
     // vscode.window.showErrorMessage(`ESLint Error: ${error.message}`);
   }
-
 }
+
 export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.commands.registerCommand(
