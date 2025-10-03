@@ -32,7 +32,6 @@ export interface ParsedSelector {
 export const parsedDeclarations: ParsedDeclaration[] = [];
 export const parsedSelectors: ParsedSelector[] = [];
 export async function babelParser(document: vscode.TextDocument) {
-  // ... (setup code is the same)
   const code = document.getText();
   const ast = parse(code, {
     sourceType: "module",
@@ -41,7 +40,7 @@ export async function babelParser(document: vscode.TextDocument) {
     errorRecovery: true,
   });
 
-  // 👇 1. Create an array to hold all the promises
+
   const promises: Promise<void>[] = [];
 
   traverse(ast, {
@@ -52,15 +51,14 @@ export async function babelParser(document: vscode.TextDocument) {
       handleJSXAttribute(path, document);
     },
     TaggedTemplateExpression(path) {
-      // 👇 2. Push the promise from the async handler into the array
+
       promises.push(handleStyledComponent(path, document));
     },
   });
 
-  // 👇 3. Wait for all the collected promises to finish
+
   await Promise.all(promises);
 
-  // ✅ Now the arrays will be correctly populated
   console.log("Declarations Found:", parsedDeclarations);
   console.log("Selectors Found:", parsedSelectors);
 

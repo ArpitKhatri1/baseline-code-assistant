@@ -13,9 +13,6 @@ import { parsedDeclarations,parsedSelectors } from "../parsers/babel";
 // --- Main entry ---
 export async function checkBaseLineProperties() {
   await checkBaselineForTags();
-  // skip the attributes
-  // await checkBaselineForAttributes();
-  // await checkBaselineForEvents();
   await checkBaselineForClassNames();
   await checkBaselineForStyleCompoenents();
   await checkBaselineForInlineComponents();
