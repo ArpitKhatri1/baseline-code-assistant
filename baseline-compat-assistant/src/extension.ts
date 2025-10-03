@@ -33,7 +33,6 @@ import compat from "eslint-plugin-compat";
 // A locking flag to ensure only one parse operation runs at a time.
 let isParsing = false;
 
-
 // A timer for debouncing parse triggers.
 let debounceTimer: NodeJS.Timeout | undefined;
 
@@ -52,7 +51,7 @@ let debounceTimer: NodeJS.Timeout | undefined;
 //     vscode.window.showErrorMessage("Could not find a workspace for the file.");
 //     return;
 //   }
-  
+
 //   const projectRootPath = workspaceFolder.uri.fsPath;
 //   console.log(`✅ Correctly searching for eslint.config.js in: ${projectRootPath}`);
 
@@ -71,25 +70,27 @@ export async function runEslintOnHtml(fileUri: vscode.Uri) {
     // 1. Get the correct project path
     const workspaceFolder = vscode.workspace.getWorkspaceFolder(fileUri);
     if (!workspaceFolder) {
-      vscode.window.showErrorMessage("Could not find a workspace for the file.");
+      vscode.window.showErrorMessage(
+        "Could not find a workspace for the file."
+      );
       return;
     }
     const projectRootPath = workspaceFolder.uri.fsPath;
-    console.log("eslint project root path",projectRootPath);
+    console.log("eslint project root path", projectRootPath);
 
     // 2. Create the ESLint instance with the correct CWD
     const eslint = new ESLint({
       cwd: projectRootPath,
     });
-    
+
     // 3. Lint the file
     const results = await eslint.lintFiles([fileUri.fsPath]);
 
     // 4. Load the formatter by its name
     const formatter = await eslint.loadFormatter("stylish");
-    
+
     // For debugging: Let's see what the formatter object is
-    console.log('Successfully loaded formatter:', formatter);
+    console.log("Successfully loaded formatter:", formatter);
 
     const resultText = await formatter.format(results);
 
@@ -98,7 +99,6 @@ export async function runEslintOnHtml(fileUri: vscode.Uri) {
     outputChannel.clear();
     outputChannel.appendLine(resultText || "No issues found ✅");
     outputChannel.show();
-
   } catch (error) {
     console.error("An error occurred in runEslintOnHtml:", error);
     // vscode.window.showErrorMessage(`ESLint Error: ${error.message}`);
@@ -117,7 +117,7 @@ export function activate(context: vscode.ExtensionContext) {
           }
         }
 
-        if (uri ) {
+        if (uri) {
           await runEslintOnHtml(uri);
         } else {
           vscode.window.showWarningMessage("Please select an HTML file.");
@@ -155,13 +155,13 @@ export function activate(context: vscode.ExtensionContext) {
   const showInfoPanelDisposable = vscode.commands.registerCommand(
     "baseline-compat-assistant.showInfoPanel",
     () => {
-      // If the panel already exists, just reveal it.
+      // If the panel already exists, just reveal it and return the instance.
       if (infoPanel) {
         infoPanel.reveal(vscode.ViewColumn.Beside);
-        return;
+        return infoPanel; // ✅ Return the existing panel
       }
 
-      // Otherwise, create a new webview panel.
+      // --- Otherwise, create a new webview panel ---
       const panel = vscode.window.createWebviewPanel(
         "infoPanel",
         "Web Baseline Status",
@@ -180,6 +180,7 @@ export function activate(context: vscode.ExtensionContext) {
       const devServerUrl = "http://localhost:5173";
       panel.webview.html = getWebviewContent(devServerUrl);
 
+      // Set our global reference
       infoPanel = panel;
 
       // Clean up the reference when the panel is closed by the user.
@@ -190,27 +191,35 @@ export function activate(context: vscode.ExtensionContext) {
         null,
         context.subscriptions
       );
+
+      // ✅ Return the NEWLY created panel
+      return infoPanel;
     }
   );
+
+  // Don't forget to push the disposable to the context subscriptions
   context.subscriptions.push(showInfoPanelDisposable);
 
-  // Command triggered by the "Learn More" link in a diagnostic message.
   const learnMoreDisposable = vscode.commands.registerCommand(
     "baseline-compat-assistant.learnMore",
-    (featureId: string) => {
-      // Ensure the panel is visible, creating it if necessary.
-      vscode.commands.executeCommand("baseline-compat-assistant.showInfoPanel");
+    async (featureId: string) => {
+      // 1. Ensure the panel is visible, creating it if necessary.
+      //    This will return the panel instance.
+      const panel = await vscode.commands.executeCommand<vscode.WebviewPanel>(
+        "baseline-compat-assistant.showInfoPanel"
+      );
 
-      // Post a message to the webview with the feature to search for.
-      // A small delay gives the panel time to be created if it wasn't already open.
-      setTimeout(() => {
-        if (infoPanel) {
-          infoPanel.webview.postMessage({
+      console.log(`Sending featureId to panel: ${featureId}`);
+
+      // 2. Post a message to the webview with the feature to search for.
+      if (panel) {
+        setTimeout(() => {
+          panel.webview.postMessage({
             command: "updateQuery",
             query: featureId,
           });
-        }
-      }, 200);
+        }, 200);
+      }
     }
   );
   context.subscriptions.push(learnMoreDisposable);
@@ -290,7 +299,7 @@ async function parseFile(document: vscode.TextDocument) {
  * @param url The URL to load in the iframe.
  */
 function getWebviewContent(url: string) {
-  return `
+  return /*html*/ `
     <!DOCTYPE html>
     <html lang="en">
       <head>
@@ -309,9 +318,20 @@ function getWebviewContent(url: string) {
         <title>Web Baseline Status</title>
       </head>
       <body>
-        <iframe src="${url}"></iframe>
+        <iframe id="react-frame" src="${url}"></iframe>
+        <script>
+          (function() {
+            const iframe = document.getElementById("react-frame");
+            window.addEventListener("message", (event) => {
+              if (iframe && iframe.contentWindow) {
+                iframe.contentWindow.postMessage(event.data, "*");
+              }
+            });
+          })();
+        </script>
       </body>
-    </html>`;
+    </html>
+  `;
 }
 
 /**
