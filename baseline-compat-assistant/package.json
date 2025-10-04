@@ -25,6 +25,15 @@
   },
   "homepage": "https://github.com/arpit/baseline-compat-assistant",
   "contributes": {
+    "views": {
+      "explorer": [
+        {
+          "id": "compatibilityIssuesView",
+          "name": "Compatibility Issues",
+          "type": "tree"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "baseline-compat-assistant.helloWorld",
@@ -33,6 +42,10 @@
       {
         "command": "baseline-compat-assistant.lintHtml",
         "title": "Run ESLint on HTML"
+      },
+      {
+        "command": "baseline-compat-assistant.scanWorkspace",
+        "title": "Scan Workspace for Compatibility Issues"
       },
       {
         "command": "baseline-compat-assistant.showInfoPanel",

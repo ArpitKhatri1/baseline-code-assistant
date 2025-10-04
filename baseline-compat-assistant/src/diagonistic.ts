@@ -20,19 +20,19 @@ export async function checkBaselineUserRequirements(
     );
   }
   for (const browser of Object.keys(userBrowserConfig)) {
-    
-    const required = userBrowserConfig[browser];
+    const required = userBrowserConfig[browser]; // minimum this version is required
     // console.log(baselineResponse.support);
-    const supported = baselineResponse.support[browser] ?? "0";
-    // if (parseInt(supported) < parseInt(required)) {
-    //   addDiagnosticRange(
-    //     document,
-    //     start,
-    //     end,
-    //     `${propertyName} requires ${browser} >= ${required}, but baseline shows ${supported}. Are you sure you want to use it?`
-    //   );
-    //   break;
-    // }
+    const supported = baselineResponse.support[browser] ?? "0"; // it is supported from this version
+    console.log(required, supported);
+    if (parseInt(supported) > parseInt(required)) {
+      addDiagnosticRange(
+        document,
+        start,
+        end,
+        `${propertyName} requires ${browser} >= ${required}, but baseline shows ${supported}. Are you sure you want to use it?`
+      );
+      break;
+    }
   }
 }
 
@@ -51,13 +51,17 @@ export async function addDiagnosticRange(
     message,
     vscode.DiagnosticSeverity.Warning
   );
+  console.log(message);
 
-  const args = "twitter";
+  const semiParsedArgs = message.split(" ")[0];
+  console.log('intermediate',semiParsedArgs);
+  const args = semiParsedArgs.split(".");
+  const argsLength = args.length;
   diag.code = {
     value: "Learn More",
     target: vscode.Uri.parse(
       `command:baseline-compat-assistant.learnMore?${encodeURIComponent(
-        JSON.stringify(args)
+        JSON.stringify(args[argsLength-1])
       )}`
     ),
   };
