@@ -204,24 +204,6 @@ function isStyledExpression(node: t.Node): boolean {
   return false;
 }
 
-// // Main handler for a TaggedTemplateExpression
-// function handleStyledComponent(path: NodePath<t.TaggedTemplateExpression>, document: any) {
-//   const tag = path.node.tag;
-
-//   if (isStyledExpression(tag)) {
-//     const quasi = path.node.quasi;
-//     let cssText = quasi.quasis.map((q) => q.value.raw).join("\n");
-//      cssText = cssText.replace(/\/\*[\s\S]*?\*\//g, ''); // removes the comment
-//      cssText = cssText.replace(/\n/g,' ');
-//     console.log(cssText);
-//     styledComponents.push({
-//       css: cssText,
-//       start: path.node.start ?? 0,
-//       end: path.node.end ?? 0,
-//       document,
-//     });
-//   }
-// }
 
 function handleInlineStyle(
   expr: t.ObjectExpression,

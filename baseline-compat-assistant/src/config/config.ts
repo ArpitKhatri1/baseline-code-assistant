@@ -1,5 +1,5 @@
 export const userBrowserConfig: Record<string, string> = {
-  chrome: '1',
+  chrome: '100',
   chrome_android: '1',
   edge: '1',
   firefox: '1',
