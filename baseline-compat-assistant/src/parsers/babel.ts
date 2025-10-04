@@ -32,7 +32,6 @@ export interface ParsedSelector {
 export const parsedDeclarations: ParsedDeclaration[] = [];
 export const parsedSelectors: ParsedSelector[] = [];
 export async function babelParser(document: vscode.TextDocument) {
-  // ... (setup code is the same)
   const code = document.getText();
   const ast = parse(code, {
     sourceType: "module",
@@ -41,7 +40,7 @@ export async function babelParser(document: vscode.TextDocument) {
     errorRecovery: true,
   });
 
-  // 👇 1. Create an array to hold all the promises
+
   const promises: Promise<void>[] = [];
 
   traverse(ast, {
@@ -52,15 +51,14 @@ export async function babelParser(document: vscode.TextDocument) {
       handleJSXAttribute(path, document);
     },
     TaggedTemplateExpression(path) {
-      // 👇 2. Push the promise from the async handler into the array
+
       promises.push(handleStyledComponent(path, document));
     },
   });
 
-  // 👇 3. Wait for all the collected promises to finish
+
   await Promise.all(promises);
 
-  // ✅ Now the arrays will be correctly populated
   console.log("Declarations Found:", parsedDeclarations);
   console.log("Selectors Found:", parsedSelectors);
 
@@ -155,7 +153,7 @@ function handleJSXAttribute(
   const name = t.isJSXIdentifier(path.node.name)
     ? path.node.name.name
     : undefined;
-  if (!name) return;
+  if (!name) {return;}
 
   if (path.node.name.range) {
     attributes.push({
@@ -191,7 +189,7 @@ function handleJSXAttribute(
 }
 
 function isStyledExpression(node: t.Node): boolean {
-  if (t.isIdentifier(node, { name: "styled" })) return true;
+  if (t.isIdentifier(node, { name: "styled" })) {return true;}
 
   if (t.isMemberExpression(node)) {
     // styled.div or styled.div.attrs
@@ -230,8 +228,8 @@ function handleInlineStyle(
   document: vscode.TextDocument
 ) {
   expr.properties.forEach((prop) => {
-    if (!t.isObjectProperty(prop)) return;
-    if (!t.isIdentifier(prop.key) && !t.isStringLiteral(prop.key)) return;
+    if (!t.isObjectProperty(prop)) {return;}
+    if (!t.isIdentifier(prop.key) && !t.isStringLiteral(prop.key)) {return;}
 
     const keyName = t.isIdentifier(prop.key) ? prop.key.name : prop.key.value;
 
