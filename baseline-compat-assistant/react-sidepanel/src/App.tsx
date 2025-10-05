@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import type { WebBaselineApiResponse, FeatureData } from './types/types'
 import { WEB_STATUS_URL } from './constants'
-import axios from 'axios'
 import { FeatureCard } from './components/FeatureCard'
 import { FeatureDetail } from './components/FeatureDetail'
 import { Search } from 'lucide-react'
+
+// @ts-expect-error no definition default
+const vscode = acquireVsCodeApi();
 
 function App() {
   const [apiData, setApiData] = useState<WebBaselineApiResponse>()
@@ -13,24 +15,29 @@ function App() {
   const [selectedFeature, setSelectedFeature] = useState<FeatureData | null>(null)
   const [selectedSearchMode, setSelectedSearchMode] = useState<"Name" | "Id">("Name")
 
-  const fetchApiData = async (query: string) => {
-    if (query.trim() === '') return
+const fetchApiData = async (query: string) => {
+    if (query.trim() === '') return;
     try {
-      setLoading(true)
-      let searchQuery = query
+      setLoading(true);
+      let searchQuery = query;
       if (selectedSearchMode === "Id") {
-        searchQuery = `id:${query}`
+        searchQuery = `id:${query}`;
       }
-      const encodedQuery = encodeURIComponent(searchQuery)
-      const response = await axios.get(`${WEB_STATUS_URL}${encodedQuery}`)
-      setApiData(response.data)
+      const encodedQuery = encodeURIComponent(searchQuery);
+
+      // 1. Ask the extension to fetch the data
+      vscode.postMessage({
+        command: 'fetchApiData',
+        url: `${WEB_STATUS_URL}${encodedQuery}`
+      });
+
     } catch (error) {
-      console.error('Error fetching API data:', error)
-      setApiData(undefined)
-    } finally {
-      setLoading(false)
+      console.error('Error requesting API data:', error);
+      setApiData(undefined);
+      setLoading(false); // Make sure to handle loading state on error
     }
-  }
+  };
+
 
   // Fetch data whenever query or search mode changes
   useEffect(() => {
@@ -44,20 +51,27 @@ function App() {
     window.parent.postMessage({ command: "ready" }, "*");
   }, []);
 
-  // Listen for messages (e.g., from VSCode extension / iframe)
-  useEffect(() => {
+useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      const message = event.data
-      console.log(message);
-      if (message.command === 'updateQuery') {
-        setQuery(message.query) // this will trigger useEffect above
-        setSelectedFeature(null)
+      const message = event.data;
+      if (message.command === 'apiDataResponse') {
+        if(message.error) {
+           console.error('Error fetching API data:', message.error);
+           setApiData(undefined);
+        } else {
+           setApiData(message.data);
+        }
+        setLoading(false);
       }
-    }
-    window.addEventListener('message', handleMessage)
-    return () => window.removeEventListener('message', handleMessage)
-  }, [])
-
+      // Keep your existing message handler for 'updateQuery'
+      if (message.command === 'updateQuery') {
+        setQuery(message.query);
+        setSelectedFeature(null);
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
   const handleSearch = () => {
     if (query.trim() !== '') {
       setQuery(query) // triggers fetch via useEffect
