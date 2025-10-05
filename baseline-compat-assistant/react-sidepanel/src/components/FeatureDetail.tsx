@@ -120,7 +120,7 @@ export const FeatureDetail: React.FC<FeatureDetailProps> = ({ feature, onBack })
                     </div>
                 )}
 
-                {feature.usage && Object.keys(feature.usage).length > 0 && (
+                {/* {feature.usage && Object.keys(feature.usage).length > 0 && (
                     <div>
                         <h2 className="text-xl font-semibold text-white mb-4">Usage Statistics</h2>
                         <div className="bg-neutral-800/50 border border-neutral-700 rounded-lg p-4">
@@ -148,7 +148,7 @@ export const FeatureDetail: React.FC<FeatureDetailProps> = ({ feature, onBack })
                             </div>
                         </div>
                     </div>
-                )}
+                )} */}
             </div>
         </div>
     )

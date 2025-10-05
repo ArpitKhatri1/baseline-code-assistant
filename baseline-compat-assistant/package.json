@@ -39,6 +39,10 @@
         "command": "baseline-compat-assistant.helloWorld",
         "title": "Hello World"
       },
+       {
+        "command": "baseline-compat-assistant.generateEslintConfig",
+        "title": "Generate Baseline Config Files"
+      },
       {
         "command": "baseline-compat-assistant.lintHtml",
         "title": "Run ESLint on HTML"
@@ -94,6 +98,7 @@
   "dependencies": {
     "@babel/traverse": "^7.28.4",
     "@html-eslint/eslint-plugin": "^0.47.0",
+    "axios": "^1.12.2",
     "babel-traverse": "^6.26.0",
     "compute-baseline": "^0.4.0",
     "css-tree": "^3.1.0",
