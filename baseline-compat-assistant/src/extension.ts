@@ -1,9 +1,12 @@
 import * as vscode from "vscode";
 import * as path from "path";
-import { babelParser, parsedSelectors } from "./parsers/babel";
-import { syncBrowserConfig } from "./lib/helpers";
-import { ESLint } from "eslint";
-import { ParsedSelector, parsedDeclarations } from "./parsers/babel";
+import {
+  babelParser,
+  parsedSelectors,
+  parsedDeclarations,
+} from "./parsers/babel";
+import { runEslintOnHtml, syncBrowserConfig } from "./lib/helpers";
+import axios from "axios";
 import {
   AttributePropType,
   ClassRangeType,
@@ -11,7 +14,7 @@ import {
   TagNameRangeType,
   rawCSSType,
 } from "./types/types";
-import { addDiagnosticRange } from "./diagonistic";
+
 import {
   DiagnosticIssue,
   DiagnosticsTreeDataProvider,
@@ -28,122 +31,143 @@ export const inlineComponents: rawCSSType[] = [];
 let isParsing = false;
 let debounceTimer: NodeJS.Timeout | undefined;
 
-// Change the function to return the diagnostics it finds
-export async function runEslintOnHtml(
-  fileUri: vscode.Uri
-): Promise<DiagnosticIssue[]> {
-  const allIssues: DiagnosticIssue[] = [];
-  try {
-    const workspaceFolder = vscode.workspace.getWorkspaceFolder(fileUri);
-    if (!workspaceFolder) return [];
-
-    const projectRootPath = workspaceFolder.uri.fsPath;
-    const eslint = new ESLint({ cwd: projectRootPath });
-    const results = await eslint.lintFiles([fileUri.fsPath]);
-
-    // (Optional) You can still write to the output channel for debugging
-    // ...
-
-    for (const result of results) {
-      if (result.filePath !== fileUri.fsPath) continue;
-
-      for (const message of result.messages) {
-        const startLine = message.line - 1;
-        const startChar = message.column - 1;
-        const endLine = message.endLine ? message.endLine - 1 : startLine;
-        const endChar = message.endColumn
-          ? message.endColumn - 1
-          : startChar + 1;
-
-        const range = new vscode.Range(startLine, startChar, endLine, endChar);
-        const diagnostic = new vscode.Diagnostic(
-          range,
-          message.message,
-          vscode.DiagnosticSeverity.Warning
-        );
-        const document = await vscode.workspace.openTextDocument(fileUri);
-        for (const result of results) {
-          for (const message of result.messages) {
-            const startPos = document.offsetAt(
-              new vscode.Position(message.line - 1, message.column - 1)
-            );
-            const endLine = message.endLine
-              ? message.endLine - 1
-              : message.line - 1;
-            const endChar = message.endColumn
-              ? message.endColumn - 1
-              : message.column;
-            const endPos = document.offsetAt(
-              new vscode.Position(endLine, endChar)
-            );
-
-            console.log(message.message);
-            await addDiagnosticRange(
-              document,
-              startPos,
-              endPos,
-              message.message
-            );
-          }
-        }
-        allIssues.push({ uri: fileUri, diagnostic });
-      }
-    }
-  } catch (error) {
-    console.error(
-      `An error occurred in runEslintOnHtml for ${fileUri.fsPath}:`,
-      error
-    );
-  }
-  return allIssues;
-}
-
-// export async function runEslintOnHtml(fileUri: vscode.Uri) {
-//   try {
-//     const workspaceFolder = vscode.workspace.getWorkspaceFolder(fileUri);
-//     if (!workspaceFolder) {
-//       vscode.window.showErrorMessage(
-//         "Could not find a workspace for the file."
-//       );
-//       return;
-//     }
-//     const projectRootPath = workspaceFolder.uri.fsPath;
-//     console.log("eslint project root path", projectRootPath);
-
-//     const eslint = new ESLint({
-//       cwd: projectRootPath,
-//     });
-
-//     const results = await eslint.lintFiles([fileUri.fsPath]);
-
-//     const outputChannel = vscode.window.createOutputChannel("eslint");
-//     outputChannel.appendLine(JSON.stringify(results,null,2));
-//     outputChannel.show(true);
-//     const document = await vscode.workspace.openTextDocument(fileUri);
-
-//     for (const result of results) {
-//       for (const message of result.messages) {
-//         const startPos = document.offsetAt(new vscode.Position(message.line - 1, message.column - 1));
-//         const endLine = message.endLine ? message.endLine - 1 : message.line - 1;
-//         const endChar = message.endColumn ? message.endColumn - 1 : message.column;
-//         const endPos = document.offsetAt(new vscode.Position(endLine, endChar));
-
-//         console.log(message.message);
-//         await addDiagnosticRange(document, startPos, endPos, message.message);
-//       }
-//     }
-//   } catch (error) {
-//     console.error("An error occurred in runEslintOnHtml:", error);
-//   }
-// }
-
 export function activate(context: vscode.ExtensionContext) {
   const diagnosticsProvider = new DiagnosticsTreeDataProvider();
   vscode.window.createTreeView("compatibilityIssuesView", {
     treeDataProvider: diagnosticsProvider,
   });
 
-  // 2. Register the new "Scan Workspace" command
+  const generateEslintConfigCommand = vscode.commands.registerCommand(
+    "baseline-compat-assistant.generateEslintConfig",
+    async () => {
+      const workspaceFolders = vscode.workspace.workspaceFolders;
+      if (!workspaceFolders) {
+        vscode.window.showErrorMessage(
+          "Please open a project folder to generate the necessary config files."
+        );
+        return;
+      }
+
+      const rootPath = workspaceFolders[0].uri;
+      // Define paths for both configuration files.
+      const eslintConfigPath = vscode.Uri.joinPath(
+        rootPath,
+        "baseline-compat.config.mjs"
+      );
+      const browserslistConfigPath = vscode.Uri.joinPath(
+        rootPath,
+        ".browserslistrc"
+      );
+
+      // --- Content for both files ---
+      const eslintConfigContent = `import globals from "globals";
+import css from "@eslint/css";
+import html from "@html-eslint/eslint-plugin";
+import compat from "eslint-plugin-compat";
+
+/** @type {import('eslint').Linter.Config[]} */
+export default [
+  {
+    languageOptions: {
+      globals: globals.browser
+    }
+  },
+  {
+    files: ["**/*.css"],
+    plugins: {
+      css,
+    },
+    language: "css/css",
+    rules: {
+      "css/use-baseline": ["warn", {
+        "available": "widely"
+      }],
+    },
+  },
+  {
+    ...html.configs["flat/recommended"],
+    files: ["**/*.html"],
+    rules: {
+      "@html-eslint/use-baseline": ["warn", {
+        "available": "widely"
+      }],
+    },
+  },
+  {
+    ...compat.configs["flat/recommended"],
+    settings: {
+      "lintAllEsApis": true,
+    },
+    rules: {
+      "compat/compat": ["warn"],
+    },
+  },
+];
+`;
+      const browserslistConfigContent = `chrome >= 115
+and_chr >= 115
+edge >= 115
+firefox >= 115
+and_ff >= 115
+safari >= 20
+ios_saf >= 20`;
+
+      // --- Overwrite checks for both files ---
+      try {
+        await vscode.workspace.fs.stat(eslintConfigPath);
+        const overwrite = await vscode.window.showWarningMessage(
+          "baseline-compat.config.mjs already exists. Do you want to overwrite it?",
+          { modal: true },
+          "Overwrite"
+        );
+        if (overwrite !== "Overwrite") {
+          vscode.window.showInformationMessage(
+            "Configuration generation cancelled."
+          );
+          return;
+        }
+      } catch {
+        // ESLint config does not exist, so no need to ask for overwrite.
+      }
+
+      try {
+        await vscode.workspace.fs.stat(browserslistConfigPath);
+        const overwrite = await vscode.window.showWarningMessage(
+          ".browserslistrc already exists. Do you want to overwrite it?",
+          { modal: true },
+          "Overwrite"
+        );
+        if (overwrite !== "Overwrite") {
+          vscode.window.showInformationMessage(
+            "Configuration generation cancelled."
+          );
+          return;
+        }
+      } catch {
+        // .browserslistrc does not exist, so no need to ask for overwrite.
+      }
+
+      // --- Write both files ---
+      await vscode.workspace.fs.writeFile(
+        eslintConfigPath,
+        Buffer.from(eslintConfigContent, "utf8")
+      );
+      await vscode.workspace.fs.writeFile(
+        browserslistConfigPath,
+        Buffer.from(browserslistConfigContent, "utf8")
+      );
+
+      // --- Final confirmation and open ESLint config ---
+      vscode.window.showInformationMessage(
+        "Successfully created baseline-compat.config.mjs and .browserslistrc"
+      );
+      
+      const doc = await vscode.workspace.openTextDocument(eslintConfigPath);
+      await vscode.window.showTextDocument(doc);
+    }
+  );
+  context.subscriptions.push(generateEslintConfigCommand);
+
   const scanWorkspaceCommand = vscode.commands.registerCommand(
     "baseline-compat-assistant.scanWorkspace",
     async () => {
@@ -158,7 +182,7 @@ export function activate(context: vscode.ExtensionContext) {
 
           const files = await vscode.workspace.findFiles(
             "**/*.{js,jsx,html,css}",
-            "**/{node_modules,dist,venv,.venv,out,build}/**" // <-- UPDATED LINE
+            "**/{node_modules,dist,venv,.venv,out,build}/**"
           );
 
           let processedFiles = 0;
@@ -170,13 +194,11 @@ export function activate(context: vscode.ExtensionContext) {
               increment: 100 / files.length,
             });
 
-            // You'll need similar logic for your babelParser for JSX files
             const issues = await runEslintOnHtml(file);
             allIssues.push(...issues);
             processedFiles++;
           }
 
-          // Update the TreeView with all the collected issues
           diagnosticsProvider.refresh(allIssues);
           vscode.window.showInformationMessage(
             `Scan complete. Found ${allIssues.length} issues in ${processedFiles} files.`
@@ -185,30 +207,21 @@ export function activate(context: vscode.ExtensionContext) {
       );
     }
   );
-
   context.subscriptions.push(scanWorkspaceCommand);
 
-  // 1. Perform the initial sync when the extension activates
   (async () => {
     try {
-      // 1. Perform the initial sync when the extension activates
       await syncBrowserConfig();
-
-      // 2. Watch for any changes to the .browserslistrc file
       const watcher =
         vscode.workspace.createFileSystemWatcher("**/.browserslistrc");
-
       watcher.onDidCreate(async () => {
         console.log(".browserslistrc was created. Syncing config...");
         await syncBrowserConfig();
       });
-
       watcher.onDidChange(async () => {
         console.log(".browserslistrc was modified. Syncing config...");
         await syncBrowserConfig();
       });
-
-      // Add the watcher to subscriptions for proper cleanup
       context.subscriptions.push(watcher);
     } catch (error) {
       console.error("Error during async activation:", error);
@@ -218,7 +231,6 @@ export function activate(context: vscode.ExtensionContext) {
     }
   })();
 
-  console.log(vscode.workspace.workspaceFolders);
   context.subscriptions.push(
     vscode.commands.registerCommand(
       "baseline-compat-assistant.lintHtml",
@@ -229,7 +241,6 @@ export function activate(context: vscode.ExtensionContext) {
             uri = editor.document.uri;
           }
         }
-
         if (uri) {
           await runEslintOnHtml(uri);
         } else {
@@ -245,7 +256,6 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(diagnosticsCollection);
 
   vscode.workspace.onDidSaveTextDocument(triggerParse);
-
   vscode.window.onDidChangeActiveTextEditor((editor) => {
     if (editor) {
       triggerParse(editor.document);
@@ -258,7 +268,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   const showInfoPanelDisposable = vscode.commands.registerCommand(
     "baseline-compat-assistant.showInfoPanel",
-    () => {
+    async () => {
       if (infoPanel) {
         infoPanel.reveal(vscode.ViewColumn.Beside);
         return infoPanel;
@@ -271,15 +281,42 @@ export function activate(context: vscode.ExtensionContext) {
         {
           enableScripts: true,
           localResourceRoots: [
-            vscode.Uri.file(
-              path.join(context.extensionPath, "react-sidepanel", "dist")
+            vscode.Uri.joinPath(
+              context.extensionUri,
+              "react-sidepanel",
+              "dist"
             ),
           ],
         }
       );
 
-      const devServerUrl = "http://localhost:5173";
-      panel.webview.html = getWebviewContent(devServerUrl);
+      panel.webview.html = await getWebviewContent(
+        panel.webview,
+        context.extensionUri
+      );
+
+      panel.webview.onDidReceiveMessage(
+        async (message) => {
+          switch (message.command) {
+            case "fetchApiData":
+              try {
+                const response = await axios.get(message.url);
+                panel.webview.postMessage({
+                  command: "apiDataResponse",
+                  data: response.data,
+                });
+              } catch (error) {
+                panel.webview.postMessage({
+                  command: "apiDataResponse",
+                  error: (error as Error).message,
+                });
+              }
+              return;
+          }
+        },
+        undefined,
+        context.subscriptions
+      );
 
       infoPanel = panel;
 
@@ -372,40 +409,45 @@ async function parseFile(document: vscode.TextDocument) {
   }
 }
 
-function getWebviewContent(url: string) {
-  return /*html*/ `
-    <!DOCTYPE html>
-    <html lang="en">
-      <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <style>
-          html, body, iframe {
-            height: 100%;
-            width: 100%;
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            border: none;
-          }
-        </style>
-        <title>Web Baseline Status</title>
-      </head>
-      <body>
-        <iframe id="react-frame" src="${url}"></iframe>
-        <script>
-          (function() {
-            const iframe = document.getElementById("react-frame");
-            window.addEventListener("message", (event) => {
-              if (iframe && iframe.contentWindow) {
-                iframe.contentWindow.postMessage(event.data, "*");
-              }
-            });
-          })();
-        </script>
-      </body>
-    </html>
-  `;
+async function getWebviewContent(
+  webview: vscode.Webview,
+  extensionUri: vscode.Uri
+): Promise<string> {
+  const buildPath = vscode.Uri.joinPath(
+    extensionUri,
+    "react-sidepanel",
+    "dist"
+  );
+  const indexPath = vscode.Uri.joinPath(buildPath, "index.html");
+  const indexHtmlBytes = await vscode.workspace.fs.readFile(indexPath);
+  let indexHtml = new TextDecoder().decode(indexHtmlBytes);
+
+  indexHtml = indexHtml.replace(
+    /(href|src)="(\/[^"]+)"/g,
+    (match, attribute, assetPath) => {
+      const assetUriOnDisk = vscode.Uri.joinPath(
+        buildPath,
+        assetPath.substring(1)
+      );
+      const assetWebviewUri = webview.asWebviewUri(assetUriOnDisk);
+      return `${attribute}="${assetWebviewUri}"`;
+    }
+  );
+
+  const cspSource = webview.cspSource;
+  const apiDomain = "https://api.webstatus.dev";
+
+  const cspMetaTag = `<meta http-equiv="Content-Security-Policy" content="
+        default-src 'none';
+        style-src ${cspSource} 'unsafe-inline';
+        script-src ${cspSource};
+        img-src ${cspSource} data:;
+        connect-src ${apiDomain};
+    ">`;
+
+  indexHtml = indexHtml.replace("<head>", `<head>${cspMetaTag}`);
+
+  return indexHtml;
 }
 
 export function deactivate() {}
