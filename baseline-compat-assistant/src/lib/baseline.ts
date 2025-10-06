@@ -1,16 +1,14 @@
 import postcss from "postcss";
 import tailwindcss from "tailwindcss";
 import { safeParser } from "postcss-safe-parser";
-import fs from "fs";
 
-import { classRanges, eventHandlers, tagNames, attributes,styledComponents,inlineComponents } from "../extension";
+
+import { classRanges, eventHandlers, tagNames, attributes,inlineComponents } from "../extension";
 import { checkBaselineUserRequirements } from "../diagonistic";
-import path from "path";
-import { parse,walk,generate } from 'css-tree';
+
 import {parse as parseCSSWalk} from 'css-what' ;
 import { parsedDeclarations,parsedSelectors } from "../parsers/babel";
 
-// --- Main entry ---
 export async function checkBaseLineProperties() {
   await checkBaselineForTags();
   await checkBaselineForClassNames();
@@ -54,7 +52,6 @@ async function checkBaselineParsedSelectors(){
   } 
 }
 
-// --- Helpers ---
 async function checkBaselineFeature(file: string, featureKey: string) {
   try {
     const { getStatus } = await import("compute-baseline");
@@ -64,18 +61,14 @@ async function checkBaselineFeature(file: string, featureKey: string) {
   }
 }
 
-// Check HTML tags
 async function checkBaselineForTags() {
   for (const { tag } of tagNames) {
     const key = `html.elements.${tag.toLowerCase()}`;
     const result = await checkBaselineFeature("html", key);
 
-    // console.log(key, result);
-    // call diagnostic if needed
   }
 }
 
-// Check HTML attributes
 async function checkBaselineForAttributes() {
   for (const { prop } of attributes) {
     const key = `html.attributes.${prop.toLowerCase()}`;
@@ -88,7 +81,6 @@ async function checkBaselineForStyleCompoenents(){
 
 }
 
-// Check event handlers
 async function checkBaselineForEvents() {
   for (const { event } of eventHandlers) {
     const key = `html.events.${event}`;
@@ -98,21 +90,18 @@ async function checkBaselineForEvents() {
 export async function compileClassesToCSS(classes: string[]): Promise<string> {
   const htmlContent = `<div class="${classes.join(" ")}"></div>`;
 
-  // We only need utilities, so we keep this minimal.
   const inputCss = `
     @tailwind utilities;
   `;
 
   const result = await postcss([
     tailwindcss({
-      // Provide content to scan for classes
       content: [{ raw: htmlContent, extension: "html" }],
 
      
       corePlugins: {
         preflight: false,
       },
-      // --- END FIX ---
     }),
   ]).process(inputCss, { from: undefined, parser: safeParser });
 
@@ -128,7 +117,6 @@ async function checkBaselineForClassNames() {
 
       const tasks: Promise<void>[] = [];
 
-      // Walk properties (declarations)
       root.walkDecls((decl) => {
         tasks.push(
           (async () => {
@@ -148,7 +136,6 @@ async function checkBaselineForClassNames() {
         );
       });
 
-      // Walk selectors (rules)
       root.walkRules((rule) => {
         tasks.push(
           (async () => {
@@ -185,7 +172,6 @@ function getSelectorFeatureKeys(selector: string): string[] {
   ast.forEach((selectors) => {
     selectors.forEach((token) => {
       if (token.type === "pseudo") {
-        // pseudo-class
         switch (token.name.toLowerCase()) {
           case "hover":
             keys.push("css.selectors.hover");
@@ -208,7 +194,6 @@ function getSelectorFeatureKeys(selector: string): string[] {
       }
 
       if (token.type === "pseudo-element") {
-        // pseudo-element
         keys.push(`css.pseudo-elements.${token.name.toLowerCase()}`);
       }
     });

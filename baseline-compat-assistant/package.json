@@ -1,9 +1,9 @@
 {
   "name": "baseline-compat-assistant",
-  "publisher": "arpit",
+  "publisher": "ArpitKumarKhatri",
   "displayName": "Baseline Compat Assistant",
   "description": "Extension for Google Baseline Hackathon",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "engines": {
     "vscode": "^1.104.0"
   },
@@ -16,7 +16,13 @@
     "wrap-ansi": "7.0.0"
   },
   "activationEvents": [
-    "onLanguage:plaintext"
+    "onLanguage:plaintext",
+    "onLanguage:html",
+    "onLanguage:css",
+    "onLanguage:javascript",
+    "onLanguage:typescript",
+    "onLanguage:javascriptreact",
+    "onLanguage:typescriptreact"
   ],
   "main": "./dist/extension.js",
   "repository": {
@@ -39,7 +45,7 @@
         "command": "baseline-compat-assistant.helloWorld",
         "title": "Hello World"
       },
-       {
+      {
         "command": "baseline-compat-assistant.generateEslintConfig",
         "title": "Generate Baseline Config Files"
       },
@@ -93,7 +99,8 @@
     "npm-run-all": "^4.1.5",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.3.3",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "vsce": "^2.15.0"
   },
   "dependencies": {
     "@babel/traverse": "^7.28.4",

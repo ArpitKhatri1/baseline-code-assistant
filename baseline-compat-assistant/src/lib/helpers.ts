@@ -6,7 +6,6 @@ import { addDiagnosticRange } from "../diagonistic";
 import { ESLint } from "eslint";
 import { DiagnosticIssue } from "./DiagonsticTreeProvider";
 
-// Mapping from official browserslist names to your custom key names
 const BROWSER_NAME_MAP: Record<string, string> = {
   and_chr: "chrome_android",
   and_ff: "firefox_android",
@@ -37,10 +36,8 @@ export async function syncBrowserConfig() {
         const officialName = parts[0].trim();
         const browserVersion = parts[1].trim();
 
-        // Use the map to get your custom key, or fall back to the official name
         const userConfigKey = BROWSER_NAME_MAP[officialName] || officialName;
 
-        // IMPORTANT: Check if the final key exists in your config object
         if (userConfigKey in userBrowserConfig) {
           userBrowserConfig[userConfigKey] = browserVersion;
         }
@@ -78,26 +75,18 @@ export async function runEslintOnHtml(
     const configFilePath = path.join(projectRootPath, configFileName);
     const configFileUri = vscode.Uri.file(configFilePath);
 
-    // Options for the ESLint constructor
     const eslintOptions: ESLint.Options = {
       cwd: projectRootPath,
-      // By default, ESLint looks for eslint.config.js. We don't want that.
     };
 
     try {
-      // Check if our custom config file exists
       await vscode.workspace.fs.stat(configFileUri);
-      // If it exists, tell ESLint to use it exclusively.
       eslintOptions.overrideConfigFile = configFilePath;
       console.log(`Using custom ESLint config: ${configFilePath}`);
     } catch {
-      // The file doesn't exist. We can either stop or proceed with a default internal config.
-      // For now, let's log that we're not using it.
       console.log(
         `Custom ESLint config not found at ${configFilePath}. Linting with default rules if any.`
       );
-      // If you had a fallback config object, you could assign it here:
-      // eslintOptions.overrideConfig = myFallbackConfig;
     }
 
     const eslint = new ESLint(eslintOptions);
@@ -107,7 +96,6 @@ export async function runEslintOnHtml(
       if (result.filePath !== fileUri.fsPath) continue;
 
       for (const message of result.messages) {
-        // ESLint locations are 1-based, VSCode locations are 0-based
         const startLine = message.line - 1;
         const startChar = message.column - 1;
         const endLine = message.endLine ? message.endLine - 1 : startLine;

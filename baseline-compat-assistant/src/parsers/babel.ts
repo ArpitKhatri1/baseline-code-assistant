@@ -229,7 +229,7 @@ function handleInlineStyle(
   });
 }
 
-// REVISED Main handler for a TaggedTemplateExpression
+
 export async function handleStyledComponent(
   path: NodePath<t.TaggedTemplateExpression>,
   document: any
@@ -238,26 +238,24 @@ export async function handleStyledComponent(
 
   if (isStyledExpression(tag)) {
     const quasi = path.node.quasi;
-    // Get the raw CSS text, keeping newlines for accurate positioning.
+
     const cssText = quasi.quasis.map((q) => q.value.raw).join("");
-    // The template literal's starting position in the file.
-    // We add 1 to skip the opening backtick (`).
+ 
     const baseOffset = (quasi.start ?? 0) + 1;
 
     try {
-      // Parse the CSS text using PostCSS with a safe parser
+
       const result = await postcss().process(cssText, {
         from: undefined,
         parser: safeParser,
       });
 
-      // 1. Walk through all declarations (properties)
       result.root.walkDecls((decl) => {
         if (decl.source?.start) {
           parsedDeclarations.push({
             property: decl.prop,
             value: decl.value,
-            // Calculate the absolute start/end position in the source file
+            
             start: baseOffset + decl.source.start.offset,
             end:
               baseOffset +
@@ -271,7 +269,7 @@ export async function handleStyledComponent(
         }
       });
 
-      // 2. Walk through all rules (selectors)
+
       result.root.walkRules((rule) => {
         if (rule.source?.start) {
           parsedSelectors.push({
