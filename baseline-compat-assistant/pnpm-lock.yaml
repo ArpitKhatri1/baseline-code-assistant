@@ -13,7 +13,13 @@ importers:
 
   .:
     dependencies:
+      '@babel/parser':
+        specifier: ^7.28.4
+        version: 7.28.4
       '@babel/traverse':
+        specifier: ^7.28.4
+        version: 7.28.4
+      '@babel/types':
         specifier: ^7.28.4
         version: 7.28.4
       '@html-eslint/eslint-plugin':
@@ -31,6 +37,9 @@ importers:
       css-tree:
         specifier: ^3.1.0
         version: 3.1.0
+      css-what:
+        specifier: ^7.0.0
+        version: 7.0.0
       eslint-plugin-compat:
         specifier: ^6.0.2
         version: 6.0.2(eslint@9.35.0(jiti@2.6.0))
@@ -905,6 +914,10 @@ packages:
 
   css-what@6.2.2:
     resolution: {integrity: sha512-u/O3vwbptzhMs3L1fQE82ZSLHQQfto5gyZzwteVIEyeaY5Fc7R4dapF/BvRoSYFeqfBk4m0V1Vafq5Pjv25wvA==}
+    engines: {node: '>= 6'}
+
+  css-what@7.0.0:
+    resolution: {integrity: sha512-wD5oz5xibMOPHzy13CyGmogB3phdvcDaB5t0W/Nr5Z2O/agcB8YwOz6e2Lsp10pNDzBoDO9nVa3RGs/2BttpHQ==}
     engines: {node: '>= 6'}
 
   cssesc@3.0.0:
@@ -3390,6 +3403,8 @@ snapshots:
       source-map-js: 1.2.1
 
   css-what@6.2.2: {}
+
+  css-what@7.0.0: {}
 
   cssesc@3.0.0: {}
 

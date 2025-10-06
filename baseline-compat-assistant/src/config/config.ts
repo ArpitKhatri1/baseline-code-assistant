@@ -1,9 +1,9 @@
 export const userBrowserConfig: Record<string, string> = {
-  chrome: '100',
-  chrome_android: '1',
-  edge: '1',
-  firefox: '1',
-  firefox_android: '1',
-  safari: '1',
-  safari_ios: '1'
+  chrome: '115',
+  chrome_android: '115',
+  edge: '115',
+  firefox: '115',
+  firefox_android: '115',
+  safari: '20',
+  safari_ios: '20'
 };
