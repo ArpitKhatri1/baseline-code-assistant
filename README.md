@@ -6,10 +6,6 @@ Real‑time Baseline compatibility guard for modern web projects. This repositor
 - Lints HTML, CSS and JavaScript via ESLint Baseline integrations
 - Aggregates issues in a dedicated Explorer view and offers a searchable info panel for quick browser support lookups
 
-### Inspiration
-
-As a React developer working with Tailwind and inline styles, existing Baseline tooling didn’t integrate well with framework‑driven styling. This project brings Baseline compatibility feedback directly into those workflows inside VS Code.
-
 ### What it does
 
 - JSX/TSX parsing to extract Tailwind classes, `styled-components` CSS, and inline styles; converts them to plain CSS and validates against Baseline
@@ -26,14 +22,13 @@ Prerequisites:
 
 Install dependencies:
 
-```bash
-pnpm install
-```
 
-Build the extension (development):
+
+Build the extension (development): Clone the repository 
 
 ```bash
 cd baseline-compat-assistant
+pnpm install 
 pnpm run compile
 cd baseline-compat-assistant/react-sidepanel
 pnpm install
