@@ -1,7 +1,7 @@
 {
   "name": "baseline-compat-assistant",
   "publisher": "ArpitKumarKhatri",
-  "displayName": "Baseline Compat Assistant",
+  "displayName": "Baseline Code Assistant",
   "description": "Extension for Google Baseline Hackathon",
   "version": "0.0.3",
   "engines": {
@@ -27,9 +27,9 @@
   "main": "./dist/extension.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/arpit/baseline-compat-assistant.git"
+    "url": "https://github.com/ArpitKhatri1/baseline-code-assistant"
   },
-  "homepage": "https://github.com/arpit/baseline-compat-assistant",
+  "homepage": "https://github.com/ArpitKhatri1/baseline-code-assistant",
   "contributes": {
     "views": {
       "explorer": [
