@@ -44,7 +44,7 @@ Launch in VS Code:
 ```bash
 pnpm add -D globals @eslint/css @html-eslint/eslint-plugin eslint eslint-plugin-compact
 ```
-
+After downloading the dependencies reload the vscode window(through command [control+ Shift + P]) or restart vscode for that folder.
 ### Using the extension
 
 In the Extension Development Host:
