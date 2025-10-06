@@ -39,6 +39,11 @@ Launch in VS Code:
 
 1. Open this repository in VS Code
 2. Press F5 to launch the Extension Development Host
+3. Download these dependencies in the Development Host for eslint to work
+
+```bash
+pnpm add -D globals @eslint/css @html-eslint/eslint-plugin eslint eslint-plugin-compact
+```
 
 ### Using the extension
 
