@@ -2,6 +2,12 @@
 
 Improve cross‑browser confidence directly in your editor. Baseline Compat Assistant scans your workspace and your JSX/TSX styling for Baseline compatibility issues and surfaces them as diagnostics, plus an information side panel for quick lookups.
 
+Download these dependencies in the Development Host for eslint to work
+```Bash
+pnpm add -D globals @eslint/css @html-eslint/eslint-plugin eslint eslint-plugin-compact
+```
+After downloading the dependencies reload the vscode window(through command [control+ Shift + P]) or restart vscode for that folder.
+
 ### Features
 
 - **JSX/TSX style analysis**: Parses React files to extract Tailwind CSS classes, styled‑components (library support for `styled-components`), and inline `style` props to check their resulting CSS against Baseline data.
